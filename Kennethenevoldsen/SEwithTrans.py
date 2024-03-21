@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
+from numba import jit, cuda 
+import pandas as pd
 from sklearn.manifold import TSNE
-
 from transformers import AutoTokenizer, AutoModel
 import torch
+
 import Dataloader as dl
 
 # Mean Pooling - Take attention mask into account for correct averaging
@@ -37,6 +39,16 @@ sentence_embeddings = sentence_embeddings.detach().numpy()
 # Perform t-SNE
 tsne = TSNE(n_components=2, random_state=0)
 tsne_results = tsne.fit_transform(sentence_embeddings)
+
+# Create a DataFrame
+df = pd.DataFrame({
+    'Sentence': sentences,
+    'Dimension 1': tsne_results[:,0],
+    'Dimension 2': tsne_results[:,1]
+})
+
+# Display the DataFrame
+print(df)
 
 # Plot the results
 plt.scatter(tsne_results[:,0], tsne_results[:,1])
