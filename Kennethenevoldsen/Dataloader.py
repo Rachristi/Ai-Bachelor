@@ -1,14 +1,26 @@
 import pandas as pd
-from numba import jit, cuda 
 
 def loaddata():
-    df = pd.read_excel(r'..\labeled_036.xlsx')
+    # Read the first Excel file
+    df1 = pd.read_excel(r'..\labeled_036.xlsx')
+    
+    # Read the second Excel file
+    df2 = pd.read_excel(r'..\labeled_020.xlsx')
+    
+    # Filter rows where finance_relevant is True and add identifier
+    df1['question_id'] = '036_' + df1['question_id'].astype(str)
+    df2['question_id'] = '020_' + df2['question_id'].astype(str)
+    
+    # Concatenate the two DataFrames
+    df = pd.concat([df1, df2])
 
     # Filter rows where finance_relevant is True
     relevance_rows = df[df['finance_relevant'] == True]
 
+    # Initialize a dictionary to store questions with the same ID
     QnA_dict = {}
 
+    # Iterate over each row
     for index, row in relevance_rows.iterrows():
         question_id = row['question_id']
         data_type = row['data_type']
@@ -22,7 +34,7 @@ def loaddata():
             # Create a new list with the text for this question_id
             QnA_dict[question_id] = [(text, data_type)]
 
-    # Create lists to store questions and answers
+    # Create a list to store question-answer pairs
     question_answer_pairs = []
 
     # Iterate over each question_id and its associated entries
@@ -38,10 +50,13 @@ def loaddata():
                 question_texts.append(text)
             else:
                 answer_texts.append(text)
+        # Concatenate all the questions into a single string
+        questions_text = ' '.join(question_texts)
         # Concatenate all the answers into a single string
         answers_text = ' '.join(answer_texts)
-        # Add question-answer pair to the list
-        if question_texts:
-            question_answer_pairs.append((question_texts[0], answers_text))
+        # Add question-answer pair to the list with identifier
+        if questions_text:
+            question_answer_pairs.append((question_id, questions_text, answers_text))
 
-    return question_answer_pairs
+    # Return question_answer_pairs without identifier
+    return [(question, answers) for _, question, answers in question_answer_pairs]
