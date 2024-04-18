@@ -11,11 +11,14 @@ def get_answer():
     # Call the appropriate method based on the dropdown selection
     if method == 'method1':
         answer = method1(question)
+        sender = "bot"
     elif method == 'method2':
         answer = method2(question)
+        sender = "bot"
     else:
         answer = "Invalid method selected"
-    return jsonify({'answer': answer})
+        sender = "bot"
+    return jsonify({'answer': answer, 'sender': sender})
 
 def method1(question):
     # Implement method 1 logic here
