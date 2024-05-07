@@ -1,17 +1,16 @@
 <script lang="ts">
     import { afterUpdate, beforeUpdate } from "svelte";
-    import { flip } from "svelte/animate";
 
-
-	let question: string = 'What is the answer?';
+	let question = '';
 	let answer: string = '';
 	let error: string = '';
-	let methodarr: string[] = ['method1', 'method2', 'method3'];
+	let methodarr: string[] = ['GPT2', 'BERT','GROG','LLAMA', 'method3'];
 	let method: string = '';
 	let comments: {message: string, sender: string}[] = [];
 	let auther: string = 'user';
 	let autoscroll: boolean = false;
 	let div: HTMLDivElement;
+	let isLoading = false;
 
 	//Adds a scroll event listener to the chat div
 	beforeUpdate(() => {
@@ -29,10 +28,11 @@
   
 	// Sends the question to the server and gets the answer
 	async function sendQuestion() {
+	isLoading = true;
 	  try {
-		auther = 'user';
-		comments = [...comments, {message: question, sender: auther}];
-		const response = await fetch('http://localhost:5000/answer', {  // Replace with your Flask server URL
+		  auther = 'user';
+		  comments = [...comments, {message: question, sender: auther}];
+		  const response = await fetch('http://localhost:5000/answer', {  // Replace with your Flask server URL
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
@@ -40,7 +40,7 @@
 			body: JSON.stringify({ question, method })
 		});
 		if (!response.ok) {
-		  throw new Error('Failed to fetch data');
+			throw new Error('Failed to fetch data');
 		}
 		const data = await response.json();
 		answer = data.answer;
@@ -51,8 +51,14 @@
 		error = 'An error occurred while fetching data';
 		console.error(err);
 	  }
-
+	  isLoading = false;
 	}
+
+    function handleKeyDown(event: KeyboardEvent & { currentTarget: EventTarget & HTMLInputElement; }) {
+		if (event.key === 'Enter') {
+			sendQuestion();
+		}
+    }
 </script>
   
   <div class="container">
@@ -70,6 +76,9 @@
 		</div>
 	</div>
 	{/each}
+	{#if isLoading}
+	<div class="spinner"></div>
+	{/if}
 	</div>
   
 	<div class="input-container">
@@ -78,7 +87,7 @@
 		<option value={m}>{m}</option>
 		{/each}
 	  </select>
-	  <input bind:value={question} placeholder="Enter your question" />
+	  <input on:keydown={handleKeyDown} bind:value={question} placeholder="Enter your question" />
 	  <button on:click={sendQuestion}>Get Answer</button>
 	</div>
 </div>  
@@ -133,14 +142,14 @@
 	display: flex;
 	align-items: center;
 	margin-bottom: 20px;
-  }
+}
 
   .input-container input {
 	flex: 1;
 	padding: 10px;
 	border: 1px solid #ccc;
 	border-radius: 5px;
-  }
+	}
 
   .input-container button {
 	padding: 10px 20px;
@@ -149,5 +158,21 @@
 	border: none;
 	border-radius: 5px;
 	cursor: pointer;
-  }
+  	}
+
+  .spinner {
+    border: 16px solid #f3f3f3;
+    border-top: 16px solid #3498db;
+    border-radius: 50%;
+    width: 10px;
+    height: 10px;
+	position: flex;
+    animation: spin 2s linear infinite;
+	}
+
+	@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+	}
+
 </style>
