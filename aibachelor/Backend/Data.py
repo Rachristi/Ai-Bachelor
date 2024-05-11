@@ -1,25 +1,29 @@
 from flask import Flask, request, jsonify
+from groq import Groq
 from flask_cors import CORS
 from groq import Groq
 import torch
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
+from transformers import GPT2LMHeadModel, GPT2Tokenizer, RagTokenizer, RagSequenceForGeneration, RagRetriever
 from transformers import BertForQuestionAnswering, BertTokenizer
 import Dataloader as dl
 
-tokenizerGPT2 = GPT2Tokenizer.from_pretrained("gpt2")
-modelGPT2 = GPT2LMHeadModel.from_pretrained("gpt2")
-
-tokenizerBERT = BertTokenizer.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
-modelBERT = BertForQuestionAnswering.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
 
 client = Groq(
-    api_key="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",
+    api_key="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",
 )
+
+# tokenizerGPT2 = GPT2Tokenizer.from_pretrained("gpt2")
+# modelGPT2 = GPT2LMHeadModel.from_pretrained("gpt2")
+
+#tokenizerBERT = BertTokenizer.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
+#modelBERT = BertForQuestionAnswering.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
+
+context = dl.loaddata()
 
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/answer', methods=['POST'])
+@app.route('/answer', methods=['POST'])#
 def get_answer():
     context = dl.loaddataQAPairs()
     question = request.json['question']
@@ -34,8 +38,8 @@ def get_answer():
     elif method == 'GROG':
         answer = grogmethod1(question)
         sender = "bot"
-    elif method == 'LLAMA':
-        answer = grogmethod2(question)
+    elif method == 'GROQ':
+        answer = askgroq(question)
         sender = "bot"
     else:
         answer = "Invalid method selected"
@@ -108,22 +112,21 @@ def grogmethod1(question):
 
     return chat_completion.choices[0].message.content
 
-def grogmethod2(question):
+def askgroq(question):
+    
     chat_completion = client.chat.completions.create(
         messages=[
+            {
+                "role": "system",
+                "content": context,
+            },
             {
                 "role": "user",
                 "content": question,
             }
         ],
         model="llama3-8b-8192",
-        temperature=0.2,
-        max_tokens=1024,
-        top_p=1,
-        stop=None,
-        stream=False,
     )
-
     return chat_completion.choices[0].message.content
 
 if __name__ == '__main__':
