@@ -6,12 +6,13 @@
 	let question: string = 'What is the answer?';
 	let answer: string = '';
 	let error: string = '';
-	let methodarr: string[] = ['method1', 'method2', 'method3'];
+	let methodarr: string[] = ['GPT2', 'BERT', 'GROQ'];
 	let method: string = '';
 	let comments: {message: string, sender: string}[] = [];
 	let auther: string = 'user';
 	let autoscroll: boolean = false;
 	let div: HTMLDivElement;
+	let isLoading: boolean = false;
 
 	//Adds a scroll event listener to the chat div
 	beforeUpdate(() => {
@@ -26,9 +27,15 @@
 				div.scrollTop = div.scrollHeight;
 			}
 		});
-  
+	
+	function handleKeyPress(event: KeyboardEvent, ) {
+		if (event.key === 'Enter') {
+			sendQuestion();
+		}
+	}
 	// Sends the question to the server and gets the answer
 	async function sendQuestion() {
+	isLoading = true;
 	  try {
 		auther = 'user';
 		comments = [...comments, {message: question, sender: auther}];
@@ -42,6 +49,7 @@
 		if (!response.ok) {
 		  throw new Error('Failed to fetch data');
 		}
+		question = '';
 		const data = await response.json();
 		answer = data.answer;
 		auther = data.sender;
@@ -51,7 +59,7 @@
 		error = 'An error occurred while fetching data';
 		console.error(err);
 	  }
-
+	  isLoading = false;
 	}
 </script>
   
@@ -70,6 +78,9 @@
 		</div>
 	</div>
 	{/each}
+	{#if isLoading}
+  		<div class="spinner"></div>
+	{/if}
 	</div>
   
 	<div class="input-container">
@@ -78,7 +89,7 @@
 		<option value={m}>{m}</option>
 		{/each}
 	  </select>
-	  <input bind:value={question} placeholder="Enter your question" />
+	  <input on:keypress={handleKeyPress} bind:value={question} placeholder="Enter your question" />
 	  <button on:click={sendQuestion}>Get Answer</button>
 	</div>
 </div>  
@@ -149,5 +160,19 @@
 	border: none;
 	border-radius: 5px;
 	cursor: pointer;
+  }
+
+  .spinner {
+    border: 16px solid #f3f3f3;
+    border-radius: 50%;
+    border-top: 16px solid #3498db;
+    width: 30px;
+    height: 30px;
+    animation: spin 2s linear infinite;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
   }
 </style>

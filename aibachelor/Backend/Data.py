@@ -1,25 +1,27 @@
 from flask import Flask, request, jsonify
+from groq import Groq
 from flask_cors import CORS
 import torch
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
+from transformers import GPT2LMHeadModel, GPT2Tokenizer, RagTokenizer, RagSequenceForGeneration, RagRetriever
 from transformers import BertForQuestionAnswering, BertTokenizer
 import Dataloader as dl
 
+client = Groq(
+    api_key="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",
+)
 
+# tokenizerGPT2 = GPT2Tokenizer.from_pretrained("gpt2")
+# modelGPT2 = GPT2LMHeadModel.from_pretrained("gpt2")
 
-tokenizerGPT2 = GPT2Tokenizer.from_pretrained("gpt2")
-modelGPT2 = GPT2LMHeadModel.from_pretrained("gpt2")
-
-tokenizerBERT = BertTokenizer.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
-modelBERT = BertForQuestionAnswering.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
+#tokenizerBERT = BertTokenizer.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
+#modelBERT = BertForQuestionAnswering.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
 
 context = dl.loaddata()
-
 
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/answer', methods=['POST'])
+@app.route('/answer', methods=['POST'])#
 def get_answer():
     question = request.json['question']
     method = request.json['method']  # Assuming method is specified in the request
@@ -29,6 +31,9 @@ def get_answer():
         sender = "bot"
     elif method == 'method2':
         answer = method2(question, context)
+        sender = "bot"
+    elif method == 'GROQ':
+        answer = askgroq(question)
         sender = "bot"
     else:
         answer = "Invalid method selected"
@@ -78,6 +83,24 @@ def method2(question, context):
             best_answer = tokenizerBERT.convert_tokens_to_string(tokenizerBERT.convert_ids_to_tokens(inputs["input_ids"][0][answer_start:answer_end]))
 
     return best_answer
+
+
+def askgroq(question):
+    
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "system",
+                "content": context,
+            },
+            {
+                "role": "user",
+                "content": question,
+            }
+        ],
+        model="llama3-8b-8192",
+    )
+    return chat_completion.choices[0].message.content
 
 if __name__ == '__main__':
     app.run(debug=True)
