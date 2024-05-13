@@ -1,34 +1,65 @@
 from flask import Flask, request, jsonify
-from groq import Groq
 from flask_cors import CORS
 from groq import Groq
+import numpy as np
 import torch
-from transformers import GPT2LMHeadModel, GPT2Tokenizer, RagTokenizer, RagSequenceForGeneration, RagRetriever
-from transformers import BertForQuestionAnswering, BertTokenizer
+from transformers import GPT2LMHeadModel, GPT2Tokenizer, RagTokenizer, RagSequenceForGeneration, RagRetriever, BertForQuestionAnswering, BertTokenizer, AutoTokenizer, AutoModel
 import Dataloader as dl
+import Embedding as emb
+import excelwriter as ew
+from milvus import default_server
+from pymilvus import connections, utility, MilvusException
+from sentence_transformers import SentenceTransformer
+
+connections.connect(host='localhost', port=default_server.listen_port)
+#4096 dim
+#embeddingModel = "e5mistral7b"
+#i dont know the dim
+#embeddingModel = "qa_embeddings"
+#1024 dim
+embeddingModel = "e5Large"
+
+
+
+try: 
+    collection = utility.list_collections()
+    print(collection)
+except MilvusException as e:
+    print(e)
 
 
 client = Groq(
     api_key="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",
 )
 
+# tokenizer = AutoTokenizer.from_pretrained("KennethEnevoldsen/dfm-sentence-encoder-large")
+# model = AutoModel.from_pretrained("KennethEnevoldsen/dfm-sentence-encoder-large")
+
 # tokenizerGPT2 = GPT2Tokenizer.from_pretrained("gpt2")
 # modelGPT2 = GPT2LMHeadModel.from_pretrained("gpt2")
 
-#tokenizerBERT = BertTokenizer.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
-#modelBERT = BertForQuestionAnswering.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
+# tokenizerBERT = BertTokenizer.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
+# modelBERT = BertForQuestionAnswering.from_pretrained('bert-large-uncased-whole-word-masking-finetuned-squad')
 
-context = dl.loaddata()
+# tokenizer = AutoTokenizer.from_pretrained('intfloat/e5-mistral-7b-instruct')
+# model = AutoModel.from_pretrained('intfloat/e5-mistral-7b-instruct')
+
+tokenizer = AutoTokenizer.from_pretrained('intfloat/multilingual-e5-large')
+model = AutoModel.from_pretrained('intfloat/multilingual-e5-large')
+
+#context = dl.loaddata()
 
 app = Flask(__name__)
 CORS(app)
+context = dl.loaddataQAPairs()
+
 
 @app.route('/answer', methods=['POST'])#
 def get_answer():
-    context = dl.loaddataQAPairs()
     question = request.json['question']
     method = request.json['method']  # Assuming method is specified in the request
     # Call the appropriate method based on the dropdown selection
+
     if method == 'GPT2':
         answer = ask_gpt2(question)
         sender = "bot"
@@ -38,13 +69,30 @@ def get_answer():
     elif method == 'GROG':
         answer = grogmethod1(question)
         sender = "bot"
-    elif method == 'GROQ':
-        answer = askgroq(question)
+    elif method == 'LLAMA':
+        answer = askllama(question)
+        sender = "bot"
+    elif method == 'LLAMANOCONTEXT':
+        answer = askllamaNoContext(question)
+        sender = "bot"
+    elif method == 'MIXTRAL':
+        answer = askmixtral(question)
+        sender = "bot"
+    elif method == 'MIXTRALNOCONTEXT':
+        answer = askmixtralNoContext(question)
+        sender = "bot"
+    elif method == 'GOOGLE':
+        answer = askgoogle(question)
+        sender = "bot"
+    elif method == 'GOOGLENOCONTEXT':
+        answer = askgoogleNoContext(question)
         sender = "bot"
     else:
         answer = "Invalid method selected"
         sender = "bot"
+    
     return jsonify({'answer': answer, 'sender': sender})
+
 
 def ask_gpt2(question):
     inputs = tokenizerGPT2.encode_plus(question, return_tensors="pt")
@@ -59,6 +107,7 @@ def ask_gpt2(question):
     )
     answer = tokenizerGPT2.decode(outputs[0])
     return answer
+
 
 def method2(question, context):
     context = dl.loaddataQAstring()
@@ -94,6 +143,12 @@ def method2(question, context):
 
     return best_answer
 
+
+def create_embeddings(tokenizer, model, emodel):
+    emb.insertEmbeddings(tokenizer, model, emodel)
+    return "Embeddings created"
+
+
 def grogmethod1(question):
     chat_completion = client.chat.completions.create(
         messages=[
@@ -112,13 +167,16 @@ def grogmethod1(question):
 
     return chat_completion.choices[0].message.content
 
-def askgroq(question):
-    
+
+def askllama(question):
+    start = startTimer()
+    contextfromRAG, EmbeddingID = emb.retreivesimilarity(question, model, tokenizer, embeddingModel)
+
     chat_completion = client.chat.completions.create(
         messages=[
             {
                 "role": "system",
-                "content": context,
+                "content": contextfromRAG,
             },
             {
                 "role": "user",
@@ -127,7 +185,129 @@ def askgroq(question):
         ],
         model="llama3-8b-8192",
     )
+    end = stopTimer()
+    time = end - start
+    sendToExcelWriter(question, chat_completion.choices[0].message.content, EmbeddingID, embeddingModel, chat_completion.model, contextfromRAG, time)
+
     return chat_completion.choices[0].message.content
+
+
+def askllamaNoContext(question):
+    start = startTimer()
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": question,
+            }
+        ],
+        model="llama3-8b-8192",
+    )
+    end = stopTimer()
+    time = end - start
+    sendToExcelWriter(question, chat_completion.choices[0].message.content, "No context", "No context", chat_completion.model, "No context", time)
+
+    return chat_completion.choices[0].message.content
+
+
+def askmixtral(question):
+    start = startTimer()
+    contextfromRAG, EmbeddingID = emb.retreivesimilarity(question, model, tokenizer, embeddingModel)
+    chat_completion = client.chat.completions.create(
+        messages=[
+                        {
+                "role": "system",
+                "content": contextfromRAG,
+            },
+            {
+                "role": "user",
+                "content": question,
+            }
+        ],
+        model="mixtral-8x7b-32768",
+    )
+    end = stopTimer()
+    time = end - start
+    sendToExcelWriter(question, chat_completion.choices[0].message.content, EmbeddingID, embeddingModel, chat_completion.model, contextfromRAG, time)
+    return chat_completion.choices[0].message.content
+
+
+def askmixtralNoContext(question):
+    start = startTimer()
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": question,
+            }
+        ],
+        model="mixtral-8x7b-32768",
+    )
+    end = stopTimer()
+    time = end - start
+    sendToExcelWriter(question, chat_completion.choices[0].message.content, "No context", "No context", chat_completion.model, "No context", time)
+
+    return chat_completion.choices[0].message.content
+
+
+def askgoogle(question):
+    start = startTimer()
+    contextfromRAG, EmbeddingID = emb.retreivesimilarity(question, model, tokenizer, embeddingModel)
+    chat_completion = client.chat.completions.create(
+        messages=[
+                        {
+                "role": "system",
+                "content": contextfromRAG,
+            },
+            {
+                "role": "user",
+                "content": question,
+            }
+        ],
+        model="gemma-7b-it",
+    )
+    end = stopTimer()
+    time = end - start
+    sendToExcelWriter(question, chat_completion.choices[0].message.content, EmbeddingID, embeddingModel, chat_completion.model, contextfromRAG, time)
+    return chat_completion.choices[0].message.content
+
+
+def askgoogleNoContext(question):
+    start = startTimer()
+    chat_completion = client.chat.completions.create(
+        messages=[
+            {
+                "role": "user",
+                "content": question,
+            }
+        ],
+        model="gemma-7b-it",
+    )
+    end = stopTimer()
+    time = end - start
+    sendToExcelWriter(question, chat_completion.choices[0].message.content, "No context", "No context", chat_completion.model, "No context", time)
+    return chat_completion.choices[0].message.content
+
+
+def sendToExcelWriter(question, answer, embeddingID, embeddingModel, generativeModel, context, time):
+    data = [
+        (question, answer, embeddingID, embeddingModel, generativeModel, context, time)
+    ]
+    ew.export_to_excel(data, "data.xlsx")
+
+
+def startTimer():
+    import time
+    start = time.time()
+    return start
+
+
+def stopTimer():
+    import time
+    end = time.time()
+    return end
+
+# create_embeddings(tokenizer, model,embeddingModel)
 
 if __name__ == '__main__':
     app.run(debug=True)

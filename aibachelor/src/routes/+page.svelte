@@ -4,21 +4,13 @@
 	let question = '';
 	let answer: string = '';
 	let error: string = '';
-<<<<<<< HEAD
-	let methodarr: string[] = ['GPT2', 'BERT','GROG','LLAMA', 'method3'];
-=======
-	let methodarr: string[] = ['GPT2', 'BERT', 'GROQ'];
->>>>>>> 0a868831300ab90b524446dc5e936bfd42446993
+	let methodarr: string[] = ['GPT2', 'BERT','GROG','LLAMA','LLAMANOCONTEXT','MIXTRAL','MIXTRALNOCONTEXT','GOOGLE','GOOGLENOCONTEXT','method3'];
 	let method: string = '';
 	let comments: {message: string, sender: string}[] = [];
 	let auther: string = 'user';
 	let autoscroll: boolean = false;
 	let div: HTMLDivElement;
-<<<<<<< HEAD
 	let isLoading = false;
-=======
-	let isLoading: boolean = false;
->>>>>>> 0a868831300ab90b524446dc5e936bfd42446993
 
 	//Adds a scroll event listener to the chat div
 	beforeUpdate(() => {
@@ -33,18 +25,13 @@
 				div.scrollTop = div.scrollHeight;
 			}
 		});
-	
-	function handleKeyPress(event: KeyboardEvent, ) {
-		if (event.key === 'Enter') {
-			sendQuestion();
-		}
-	}
+  
 	// Sends the question to the server and gets the answer
 	async function sendQuestion() {
 	isLoading = true;
+		auther = 'user';
+		comments = [...comments, {message: question, sender: auther}];
 	  try {
-		  auther = 'user';
-		  comments = [...comments, {message: question, sender: auther}];
 		  const response = await fetch('http://localhost:5000/answer', {  // Replace with your Flask server URL
 			method: 'POST',
 			headers: {
@@ -55,7 +42,6 @@
 		if (!response.ok) {
 			throw new Error('Failed to fetch data');
 		}
-		question = '';
 		const data = await response.json();
 		answer = data.answer;
 		auther = data.sender;
@@ -91,11 +77,7 @@
 	</div>
 	{/each}
 	{#if isLoading}
-<<<<<<< HEAD
 	<div class="spinner"></div>
-=======
-  		<div class="spinner"></div>
->>>>>>> 0a868831300ab90b524446dc5e936bfd42446993
 	{/if}
 	</div>
   
@@ -105,11 +87,7 @@
 		<option value={m}>{m}</option>
 		{/each}
 	  </select>
-<<<<<<< HEAD
 	  <input on:keydown={handleKeyDown} bind:value={question} placeholder="Enter your question" />
-=======
-	  <input on:keypress={handleKeyPress} bind:value={question} placeholder="Enter your question" />
->>>>>>> 0a868831300ab90b524446dc5e936bfd42446993
 	  <button on:click={sendQuestion}>Get Answer</button>
 	</div>
 </div>  
@@ -180,7 +158,6 @@
 	border: none;
 	border-radius: 5px;
 	cursor: pointer;
-<<<<<<< HEAD
   	}
 
   .spinner {
@@ -198,21 +175,4 @@
     100% { transform: rotate(360deg); }
 	}
 
-=======
-  }
-
-  .spinner {
-    border: 16px solid #f3f3f3;
-    border-radius: 50%;
-    border-top: 16px solid #3498db;
-    width: 30px;
-    height: 30px;
-    animation: spin 2s linear infinite;
-  }
-
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
->>>>>>> 0a868831300ab90b524446dc5e936bfd42446993
 </style>
