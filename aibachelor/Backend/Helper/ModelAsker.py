@@ -32,10 +32,25 @@ class ModelAsker:
 
         return chat_completion.choices[0].message.content
 
+
+    def ask_gpt2(question, model, tokenizer):
+        inputs = tokenizer.encode_plus(question, return_tensors="pt")
+        outputs = model.generate(
+            input_ids=inputs["input_ids"], 
+            attention_mask=inputs["attention_mask"],
+            max_length=100, 
+            num_return_sequences=1,  # Generate 5 different sequences
+            temperature=0.8,
+            pad_token_id=tokenizer.eos_token_id,
+            do_sample=True  # Use probabilistic decoding
+        )
+        answer = tokenizer.decode(outputs[0])
+        return answer
+
     def get_messages(self, question, contextfromRAG):
         return [
             {
-                "role": "system",
+                "role": "you are a pirate, answer me in pirate speak",
                 "content": contextfromRAG,
             },
             {
@@ -61,19 +76,7 @@ class ModelAsker:
     def stop_timer(self):
         return time.time()
     
-    # def ask_gpt2(question):
-    #     inputs = tokenizerGPT2.encode_plus(question, return_tensors="pt")
-    #     outputs = modelGPT2.generate(
-    #         input_ids=inputs["input_ids"], 
-    #         attention_mask=inputs["attention_mask"],
-    #         max_length=100, 
-    #         num_return_sequences=1,  # Generate 5 different sequences
-    #         temperature=0.8,
-    #         pad_token_id=tokenizerGPT2.eos_token_id,
-    #         do_sample=True  # Use probabilistic decoding
-    #     )
-    #     answer = tokenizerGPT2.decode(outputs[0])
-    #     return answer
+
 
 
     

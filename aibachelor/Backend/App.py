@@ -57,7 +57,7 @@ def get_answer():
     # Call the appropriate method based on the dropdown selection
 
     methods: Dict[str, Callable[[str, Any, Any], Any]] = {
-       'GPT2': lambda question, model, tokenizer: ask_gpt2(question, model, tokenizer),
+       #'GPT2': lambda question, model, tokenizer: ask_gpt2(question, model, tokenizer),
        #'GROG': grogmethod1,
        'LLAMA': lambda question, model, tokenizer: ask_model(llama_asker, question, model, tokenizer, True),
        'LLAMANOCONTEXT': lambda question, model, tokenizer: ask_model(llama_asker, question, model, tokenizer, False),
@@ -128,19 +128,19 @@ def create_embeddings(tokenizer, model, emodel: str) -> str:
 
 #     return chat_completion.choices[0].message.content
 
-def ask_gpt2(question, model, tokenizer):
-    inputs = tokenizer.encode_plus(question, return_tensors="pt")
-    outputs = model.generate(
-        input_ids=inputs["input_ids"], 
-        attention_mask=inputs["attention_mask"],
-        max_length=100, 
-        num_return_sequences=2,  # Generate 5 different sequences
-        temperature=0.8,
-        pad_token_id=tokenizer.eos_token_id,
-        do_sample=True  # Use probabilistic decoding
-    )
-    answer = tokenizer.decode(outputs[0])
-    return answer
+# def ask_gpt2(question, model, tokenizer):
+#     inputs = tokenizer.encode_plus(question, return_tensors="pt")
+#     outputs = model.generate(
+#         input_ids=inputs["input_ids"], 
+#         attention_mask=inputs["attention_mask"],
+#         max_length=100, 
+#         num_return_sequences=1,  # Generate 5 different sequences
+#         temperature=0.8,
+#         pad_token_id=tokenizer.eos_token_id,
+#         do_sample=True  # Use probabilistic decoding
+#     )
+#     answer = tokenizer.decode(outputs[0])
+#     return answer
 
 if __name__ == '__main__':
     app.run(debug=True)
