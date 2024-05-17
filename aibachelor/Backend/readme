@@ -6,3 +6,10 @@ run command in root with docker-compose.yml: docker compose up -d
 
 etc watch here 
 https://www.youtube.com/watch?v=OD5FS7qUfBQ
+
+tablecreate 
+     CREATE TABLE "name" (
+         id BIGINT PRIMARY KEY,
+         embedding FLOAT[] NOT NULL,
+         text TEXT NOT NULL
+     )
