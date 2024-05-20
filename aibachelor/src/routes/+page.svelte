@@ -29,8 +29,8 @@
 	// Sends the question to the server and gets the answer
 	async function sendQuestion() {
 	isLoading = true;
-		auther = 'user';
-		comments = [...comments, {message: question, sender: auther}];
+	auther = 'user';
+	comments = [...comments, {message: question, sender: auther}];
 	  try {
 		  const response = await fetch('http://localhost:5000/answer', {  // Replace with your Flask server URL
 			method: 'POST',
@@ -58,6 +58,24 @@
 		if (event.key === 'Enter') {
 			sendQuestion();
 		}
+    }
+
+
+    async function CreateEmbeddings(event: MouseEvent & { currentTarget: EventTarget & HTMLButtonElement; }) {
+    try {
+	  const response = await fetch('http://localhost:5000/create-embeddings', {  // Replace with your Flask server URL
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json'
+		}
+	});
+	if (!response.ok) {
+		throw new Error('Failed to fetch data');
+	}
+	} catch (err) {
+		error = 'An error occurred while fetching data';
+		console.error(err);
+	  }
     }
 </script>
   
@@ -89,6 +107,8 @@
 	  </select>
 	  <input on:keydown={handleKeyDown} bind:value={question} placeholder="Enter your question" />
 	  <button on:click={sendQuestion}>Get Answer</button>
+	  <button on:click={CreateEmbeddings}>CreateEmbeddings</button>
+
 	</div>
 </div>  
 

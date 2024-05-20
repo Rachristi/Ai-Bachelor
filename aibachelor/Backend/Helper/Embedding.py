@@ -1,5 +1,7 @@
 from pymilvus import DataType, CollectionSchema, FieldSchema, Collection, connections, utility, MilvusException
 from milvus import default_server
+import Helper.Dataloader as dl
+import time
 import psycopg2
 
 connections.connect(host='localhost', port=default_server.listen_port)
@@ -9,7 +11,11 @@ def getembeddings():
     print(collection)
     print(collection[1])
 
-def insertEmbeddings(tokenizer, model, nameOfCollection, data, batch_size=8):
+def insertEmbeddings(tokenizer, model, nameOfCollection, data, batch_size=4):
+    # drop collection
+    drop(nameOfCollection)
+    data = dl.loaddataQAPairs()
+
     try: 
         collection = utility.list_collections()
         print(collection)
@@ -34,6 +40,7 @@ def insertEmbeddings(tokenizer, model, nameOfCollection, data, batch_size=8):
 
     # Process the data in batches
     for i in range(0, len(data), batch_size):
+        start = start_timer()
         batch = data[i:i+batch_size]
 
         # Create embeddings for each question-answer pair in the batch
@@ -53,7 +60,10 @@ def insertEmbeddings(tokenizer, model, nameOfCollection, data, batch_size=8):
                 f"INSERT INTO {nameOfCollection} (id, embedding, text) VALUES (%s, %s, %s)",
                 (id, embedding.tolist(), text)
             )
-
+        
+        end = stop_timer()
+        time = end - start
+        print(time)
         print(f"Inserted {len(embeddings)} embeddings into the {nameOfCollection} collection.")
 
     # Commit the changes and close the connection
@@ -119,6 +129,11 @@ def dbconnction():
 def drop(nameOfCollection):
     collection = Collection(name=nameOfCollection)
     collection.drop()
+
+def start_timer():
+    return time.time()
+def stop_timer():
+    return time.time()    
 
 
 #DB emdeddings

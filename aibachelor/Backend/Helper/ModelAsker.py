@@ -50,7 +50,7 @@ class ModelAsker:
     def get_messages(self, question, contextfromRAG):
         return [
             {
-                "role": "you are a pirate, answer me in pirate speak",
+                "role": "system",
                 "content": contextfromRAG,
             },
             {
@@ -59,7 +59,7 @@ class ModelAsker:
             }
         ] if self.with_context else [
             {
-                "role": "user",
+                "role": "user",-
                 "content": question,
             }
         ]

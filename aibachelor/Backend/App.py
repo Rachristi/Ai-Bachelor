@@ -32,7 +32,7 @@ class ModelName(Enum):
 
 connections.connect(host='localhost', port=default_server.listen_port)
 
-loader = myml(ModelType.GPT2.value, ModelName.GPT2.value)
+loader = myml(ModelType.AUTO.value, ModelName.MULTILINGUAL_E5_LARGE.value)
 model, tokenizer = loader.load()
 
 app = Flask(__name__)
@@ -76,9 +76,10 @@ def get_answer():
 
     return jsonify({'answer': answer, 'sender': sender})
 
-def create_embeddings(tokenizer, model, emodel: str) -> str:
+@app.route('/create-embeddings', methods=['POST'])#
+def create_embeddings() -> str:
     data = dl.loaddataQAPairs
-    emb.insertEmbeddings(tokenizer, model, emodel, data)
+    emb.insertEmbeddings(tokenizer, model, em, data)
     return "Embeddings created"
 
 
