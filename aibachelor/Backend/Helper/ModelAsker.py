@@ -32,20 +32,25 @@ class ModelAsker:
 
         return chat_completion.choices[0].message.content
 
+    def ask_gpt2(self ,question, model, tokenizer):
+        messages = [
+            {
+                "role": "system",
+                "content": "Jens er en mand fra sjælland, bor i københavn og arbejder som fjollemand. han har et barn Magnus, og en kone Lena. Hans kammerat Flemse er en fjolletmand, som går ved navnet Krellovich, hvilket er lidt underligt..",
+            },
+            {
+                "role": "user",
+                "content": question,
+            }
+        ]
+        client = Groq(api_key="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")
 
-    def ask_gpt2(question, model, tokenizer):
-        inputs = tokenizer.encode_plus(question, return_tensors="pt")
-        outputs = model.generate(
-            input_ids=inputs["input_ids"], 
-            attention_mask=inputs["attention_mask"],
-            max_length=100, 
-            num_return_sequences=1,  # Generate 5 different sequences
-            temperature=0.8,
-            pad_token_id=tokenizer.eos_token_id,
-            do_sample=True  # Use probabilistic decoding
+        chat_completion = client.chat.completions.create(
+            messages=messages,
+            model=self.model_name,
         )
-        answer = tokenizer.decode(outputs[0])
-        return answer
+
+        return chat_completion.choices[0].message.content
 
     def get_messages(self, question, contextfromRAG):
         return [

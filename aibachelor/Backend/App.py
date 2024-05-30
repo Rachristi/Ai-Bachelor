@@ -8,7 +8,6 @@ from Helper.ModelLoader import ModelLoader as myml
 from milvus import default_server
 from pymilvus import connections
 from enum import Enum
-from sentence_transformers import SentenceTransformer
 
 class ModelType(Enum):
     AUTO = 'Auto'
@@ -49,6 +48,9 @@ gtp2_asker = ModelAsker("gpt2", em)
 def ask_model(asker, question, model, tokenizer, with_context):
     return asker.ask(question, model, tokenizer, with_context)
 
+def messwithJens(asker, question, model, tokenizer, with_context):
+    return asker.ask_gpt2(question, model, tokenizer)  
+
 
 @app.route('/answer', methods=['POST'])#
 def get_answer():
@@ -58,7 +60,7 @@ def get_answer():
 
     methods: Dict[str, Callable[[str, Any, Any], Any]] = {
        #'GPT2': lambda question, model, tokenizer: ask_gpt2(question, model, tokenizer),
-       #'GROG': grogmethod1,
+       'GROG': lambda question, model, tokenizer: messwithJens(llama_asker,question, model, tokenizer, True),
        'LLAMA': lambda question, model, tokenizer: ask_model(llama_asker, question, model, tokenizer, True),
        'LLAMANOCONTEXT': lambda question, model, tokenizer: ask_model(llama_asker, question, model, tokenizer, False),
        'MIXTRAL': lambda question, model, tokenizer: ask_model(mixtral_asker, question, model, tokenizer, True),
@@ -71,8 +73,8 @@ def get_answer():
         answer = methods[method](question, model, tokenizer)
         sender = "bot"
     else:
-        answer = "Invalid method selected"
-        sender = "bot"
+        answer = "please select a model to use"
+        sender = "systemAlert"
 
     return jsonify({'answer': answer, 'sender': sender})
 

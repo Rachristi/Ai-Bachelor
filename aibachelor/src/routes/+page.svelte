@@ -1,198 +1,144 @@
 <script lang="ts">
-    import { afterUpdate, beforeUpdate } from "svelte";
+	import { afterUpdate, beforeUpdate } from "svelte";
+	import { ApiHelper } from "../Helper/ApiHelper";
+	import Message from "../Components/Message.svelte";
+	import MinimizeMaximizeButton from "../Components/MinimizeMaximizeButton.svelte";
+	import Tabs from "../Components/Tabs.svelte";
+	import Settings from "../Components/Settings.svelte";
+    import InputField from "../Components/InputField.svelte";
+    import { sanitizeInput } from "../Helper/InputSanitizeHelper";
 
-	let question = '';
-	let answer: string = '';
-	let error: string = '';
-	let methodarr: string[] = ['GPT2', 'BERT','GROG','LLAMA','LLAMANOCONTEXT','MIXTRAL','MIXTRALNOCONTEXT','GOOGLE','GOOGLENOCONTEXT','method3'];
-	let method: string = '';
-	let comments: {message: string, sender: string}[] = [];
-	let auther: string = 'user';
+	let question: string = "";
+	let error: string = "";
+	let answer: string = "";
+	let methodarr: string[] = [
+		"GROG",
+		"LLAMA",
+		"LLAMANOCONTEXT",
+		"MIXTRAL",
+		"MIXTRALNOCONTEXT",
+		"GOOGLE",
+		"GOOGLENOCONTEXT",
+	];
+	let method: string = "";
+	let comments: { message: string; sender: string }[] = [];
+	let auther: string = "user";
 	let autoscroll: boolean = false;
 	let div: HTMLDivElement;
 	let isLoading = false;
+	let isChatOpen = true;
+	let activeTab = "chat";
 
-	//Adds a scroll event listener to the chat div
+	// Adds a scroll event listener to the chat div
 	beforeUpdate(() => {
-			if (div) {
-				const scorllableDistance = div.scrollHeight - div.offsetHeight;
-				autoscroll = div.scrollTop >= scorllableDistance - 20;
-			}
-		});
-	//Scrolls to the bottom of the chat div if autoscroll is true
-		afterUpdate(() => {
-			if (autoscroll) {
-				div.scrollTop = div.scrollHeight;
-			}
-		});
-  
-	// Sends the question to the server and gets the answer
-	async function sendQuestion() {
-	isLoading = true;
-	auther = 'user';
-	comments = [...comments, {message: question, sender: auther}];
-	  try {
-		  const response = await fetch('http://localhost:5000/answer', {  // Replace with your Flask server URL
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({ question, method })
-		});
-		if (!response.ok) {
-			throw new Error('Failed to fetch data');
-		}
-		const data = await response.json();
-		answer = data.answer;
-		auther = data.sender;
-		comments = [...comments, {message: answer, sender: auther}];
-		error = ''; // Clear any previous error
-	  } catch (err) {
-		error = 'An error occurred while fetching data';
-		console.error(err);
-	  }
-	  isLoading = false;
-	}
-
-    function handleKeyDown(event: KeyboardEvent & { currentTarget: EventTarget & HTMLInputElement; }) {
-		if (event.key === 'Enter') {
-			sendQuestion();
-		}
-    }
-
-
-    async function CreateEmbeddings(event: MouseEvent & { currentTarget: EventTarget & HTMLButtonElement; }) {
-    try {
-	  const response = await fetch('http://localhost:5000/create-embeddings', {  // Replace with your Flask server URL
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json'
+		if (div) {
+			const scrollableDistance = div.scrollHeight - div.offsetHeight;
+			autoscroll = div.scrollTop >= scrollableDistance - 20;
 		}
 	});
-	if (!response.ok) {
-		throw new Error('Failed to fetch data');
+	// Scrolls to the bottom of the chat div if autoscroll is true
+	afterUpdate(() => {
+		if (autoscroll && div) {
+			div.scrollTop = div.scrollHeight;
+		}
+	});
+
+	// Sends the question to the server and gets the answer
+	async function sendQuestion() {
+		try {
+			const sanitizedQuestion = sanitizeInput(question);
+			comments = [...comments, { message: question, sender: "user" }];
+			isLoading = true;
+			const response = await ApiHelper.sendQuestion(sanitizedQuestion, method, comments, auther);
+			comments = response.comments;
+			error = response.error;
+			isLoading = response.isLoading;
+			question = response.question;
+		} catch (err) {
+			// Handle validation errors or sanitization errors
+			answer = (err as Error).message;
+			auther = "systemAlert";
+			comments = [...comments, { message: answer, sender: auther }];
+			error = "An error occurred while processing the input";
+			console.error(err);
+			isLoading = false;
+		}
 	}
-	} catch (err) {
-		error = 'An error occurred while fetching data';
-		console.error(err);
-	  }
-    }
+
+	function handleKeyDown(
+		event: KeyboardEvent & {
+			currentTarget: EventTarget & HTMLInputElement;
+		},
+	) {
+		if (event.key === "Enter") {
+			sendQuestion();
+		}
+	}
+
+	
+	function toggleChatOpen() {
+		isChatOpen = !isChatOpen;
+	}
+
+	function setActiveTab(tab: string) {
+		activeTab = tab;
+	}
+
+	async function createEmbeddings(
+		event: MouseEvent & { currentTarget: EventTarget & HTMLButtonElement },
+	) {
+		try {
+			await ApiHelper.createEmbeddings();
+		} catch (err) {
+			error = "An error occurred while fetching data";
+			console.error(err);
+		}
+	}
 </script>
-  
-  <div class="container">
-	<div class="chat" bind:this={div}>
-	  <header class="chat-header">
-		<h1>Chat Window</h1>
-	  </header>
-  
-	  {#each comments as comment }
-	  <div class="message-container">
-		<div class="message {comment.sender}">
-			<article class="{comment.sender}">
-				<span>{comment.message}</span>
-			</article>
+
+<div class="chat-window">
+	<MinimizeMaximizeButton {isChatOpen} {toggleChatOpen}/>
+
+	<div class="chat-container {isChatOpen ? '' : 'hidden'}">
+		<Tabs {activeTab} {setActiveTab}/>
+		<div class="tab-content">
+			{#if activeTab === "chat"}
+				<div class="container">
+					<Message {comments} {isLoading} bind:div={div} bind:autoscroll={autoscroll} />
+					<InputField bind:question={question} {handleKeyDown} {sendQuestion}/>
+				</div>
+			{:else if activeTab === "settings"}
+				<div class="container">
+					<Settings bind:method={method} {methodarr} {createEmbeddings} />
+				</div>
+			{/if}
 		</div>
 	</div>
-	{/each}
-	{#if isLoading}
-	<div class="spinner"></div>
-	{/if}
-	</div>
-  
-	<div class="input-container">
-	  <select bind:value={method}>
-		{#each methodarr as m}
-		<option value={m}>{m}</option>
-		{/each}
-	  </select>
-	  <input on:keydown={handleKeyDown} bind:value={question} placeholder="Enter your question" />
-	  <button on:click={sendQuestion}>Get Answer</button>
-	  <button on:click={CreateEmbeddings}>CreateEmbeddings</button>
+</div>
 
-	</div>
-</div>  
-
-  <style>
-    .container {
-        max-width: 600px;
-        margin: 0 auto;
-        padding: 20px;
-        border: 1px solid #cccccc;
-        border-radius: 5px;
-    }
-
-    .chat {
-        background-color: #f9f9f9;
-        padding: 20px;
-        border-radius: 5px;
-        margin-bottom: 20px;
-        overflow-y: auto;
-        height: 300px; /* Limit chat height and add scrollbar */
-    }
-
-    .chat-header {
-        text-align: center;
-        margin-bottom: 20px;
-    }
-
-    .message-container {
-        clear: both; /* Ensure each message starts on a new line */
-        margin-bottom: 10px; /* Add some space between messages */
-    }
-
-    .message {
-        padding: 5px 10px;
-        border-radius: 10px;
-        max-width: 70%; /* Limit the width of the message box */
-        word-wrap: break-word; /* Allow long messages to wrap */
-    }
-
-    .user {
-        background-color: #0074d9;
-        color: white;
-        float: right; /* Align user messages to the right */
-    }
-
-    .bot {
-        background-color: rgb(0, 200, 73);
-        color: white;
-        float: left; /* Align bot messages to the left */
-    }
-  .input-container {
-	display: flex;
-	align-items: center;
-	margin-bottom: 20px;
-}
-
-  .input-container input {
-	flex: 1;
-	padding: 10px;
-	border: 1px solid #ccc;
-	border-radius: 5px;
+<style>
+	.chat-window {
+		position: fixed;
+		bottom: 0;
+		right: 0;
+		width: 400px;
+		background-color: #fff;
+		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+		border-radius: 10px 10px 0 0;
+		font-family: "Arial", sans-serif;
 	}
 
-  .input-container button {
-	padding: 10px 20px;
-	background-color: #007bff;
-	color: #fff;
-	border: none;
-	border-radius: 5px;
-	cursor: pointer;
-  	}
-
-  .spinner {
-    border: 16px solid #f3f3f3;
-    border-top: 16px solid #3498db;
-    border-radius: 50%;
-    width: 10px;
-    height: 10px;
-	position: flex;
-    animation: spin 2s linear infinite;
+	.hidden {
+		display: none;
 	}
 
-	@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+	.container {
+		max-height: 500px;
+		overflow-y: auto;
+		max-width: 380px;
+		margin: 0 auto;
+		padding: 10px 20px 20px 20px;
+		border-radius: 0 0 10px 10px;
 	}
-
+		
 </style>

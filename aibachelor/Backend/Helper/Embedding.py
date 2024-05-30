@@ -104,17 +104,30 @@ def retreivesimilarity(question, model, tokenizer, nameOfCollection):
     cur = conn.cursor()
 
     # Fetch the text of the highest scored result
-    highest_scored_result = results[0][0]
-    cur.execute(f"SELECT text FROM {nameOfCollection} WHERE id = %s", (highest_scored_result.id,))
-    text = cur.fetchone()[0]
+
+    # highest_scored_result = results[0][0]
+    # cur.execute(f"SELECT text FROM {nameOfCollection} WHERE id = %s", (highest_scored_result.id,))
+    # text = cur.fetchone()[0]
+    #print(f"ID: {highest_scored_result.id}, score: {highest_scored_result.score}, text: {text}")
+
+    #return text, highest_scored_result.id
+    # Fetch the text of the top 5 results
+    top_results = [result.id for result in results[0][:5]]
+    placeholders = ', '.join(['%s'] * len(top_results))
+    query = f"SELECT text FROM {nameOfCollection} WHERE id IN ({placeholders})"
+    cur.execute(query, tuple(top_results))
+    texts = [row[0] for row in cur.fetchall()]
+
+
+    # Concatenate the texts into a single string
+    text = ' '.join(texts)
+    print(f"IDs: {top_results}, texts: {text}")
 
     # Close the connection
     cur.close()
     conn.close()
 
-    print(f"ID: {highest_scored_result.id}, score: {highest_scored_result.score}, text: {text}")
-
-    return text, highest_scored_result.id
+    return text, top_results
 
 def dbconnction():
     conn = psycopg2.connect(
